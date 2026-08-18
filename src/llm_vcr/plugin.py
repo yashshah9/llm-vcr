@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import warnings
 from functools import wraps
 from pathlib import Path
 from typing import Any, Callable, TypeVar
@@ -19,7 +20,7 @@ CASSETTE_DIR = Path(os.environ.get("LLM_VCR_CASSETTE_DIR", "tests/cassettes"))
 RECORD_MODE = os.environ.get("LLM_VCR_RECORD", "false").lower() in {"1", "true", "yes"}
 
 
-def llm_vcr(name: str | None = None) -> Callable[[F], F]:
+def llm_vcr(name: str | None = None, sequential: bool = False) -> Callable[[F], F]:
     """Decorator to enable cassette record/replay for a test function."""
 
     def decorator(func: F) -> F:
@@ -35,7 +36,7 @@ def llm_vcr(name: str | None = None) -> Callable[[F], F]:
             else:
                 cassette = Cassette.load(cassette_path)
 
-            transport = VCRTransport(cassette, record_mode=record)
+            transport = VCRTransport(cassette, record_mode=record, sequential=sequential)
             client = httpx.Client(transport=transport)
 
             try:
@@ -46,6 +47,11 @@ def llm_vcr(name: str | None = None) -> Callable[[F], F]:
                     result = func(*args, client=client, **kwargs)
             finally:
                 client.close()
+                if sequential and not record and transport.unused():
+                    warnings.warn(
+                        f"cassette {cassette_name} has {transport.unused()} unused interaction(s)",
+                        stacklevel=2,
+                    )
                 if record:
                     cassette.save(cassette_path)
             return result

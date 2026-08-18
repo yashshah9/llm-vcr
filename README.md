@@ -2,7 +2,7 @@
 
 Record and replay LLM HTTP traffic for **deterministic, key-free pytest runs**.
 
-> **Status:** v0.2 — SSE streaming replay, volatile-field matching, and async transport. Multi-step tool-call loops are next.
+> **Status:** v0.3 — SSE streaming replay and sequential multi-step tool-call cassettes.
 
 ## Problem
 

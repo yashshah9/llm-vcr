@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.0] - 2026-08-19
+
+### Added
+- Sequential cassette replay for multi-step tool-call loops (`sequential=True`)
+- Out-of-order requests raise; unused interactions are countable
+
 ## [0.2.0] - 2026-08-19
 
 ### Added

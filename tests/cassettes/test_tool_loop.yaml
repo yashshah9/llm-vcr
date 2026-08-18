@@ -1,0 +1,34 @@
+name: tool_loop
+interactions:
+  - method: POST
+    url: https://api.openai.com/v1/chat/completions
+    request_body:
+      model: gpt-4o-mini
+      messages:
+        - role: user
+          content: What's the weather in Paris?
+    status_code: 200
+    response_body:
+      choices:
+        - message:
+            role: assistant
+            tool_calls:
+              - id: call_1
+                function:
+                  name: get_weather
+                  arguments: '{"city":"Paris"}'
+  - method: POST
+    url: https://api.openai.com/v1/chat/completions
+    request_body:
+      model: gpt-4o-mini
+      messages:
+        - role: user
+          content: What's the weather in Paris?
+        - role: tool
+          content: "22C"
+    status_code: 200
+    response_body:
+      choices:
+        - message:
+            role: assistant
+            content: It is 22C in Paris.

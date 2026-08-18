@@ -7,7 +7,7 @@ from typing import Any
 
 import httpx
 
-from llm_vcr.cassette import Cassette, Interaction, find_interaction, record_interaction
+from llm_vcr.cassette import Cassette, Interaction, find_interaction, record_interaction, request_key
 from llm_vcr.streaming import join_chunks, parse_sse
 
 
@@ -26,41 +26,25 @@ class VCRTransport(httpx.BaseTransport):
         cassette: Cassette,
         record_mode: bool,
         wrapped: httpx.BaseTransport | None = None,
+        sequential: bool = False,
     ) -> None:
         self.cassette = cassette
         self.record_mode = record_mode
         self.wrapped = wrapped or httpx.HTTPTransport()
+        self.sequential = sequential
+        self.index = 0
+        self._used: set[int] = set()
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         body_dict = _parse_json_body(request)
         streaming = _is_streaming(request, body_dict)
         if not self.record_mode:
-            interaction = find_interaction(
-                self.cassette, request.method, str(request.url), body_dict
-            )
+            interaction = self._lookup(request.method, str(request.url), body_dict)
             if interaction is None:
                 raise httpx.RequestError(
                     f"No cassette match for {request.method} {request.url}"
                 )
-            if interaction.streaming or streaming:
-                if not interaction.chunks:
-                    raise httpx.RequestError("Cassette is missing streaming chunks.")
-                content = join_chunks(interaction.chunks)
-                headers = dict(interaction.response_headers)
-                headers.setdefault("content-type", "text/event-stream")
-                return httpx.Response(
-                    status_code=interaction.status_code,
-                    headers=headers,
-                    content=content,
-                    request=request,
-                )
-            content = json.dumps(interaction.response_body or {}).encode()
-            return httpx.Response(
-                status_code=interaction.status_code,
-                headers=interaction.response_headers,
-                content=content,
-                request=request,
-            )
+            return self._replay(request, interaction, streaming)
 
         response = self.wrapped.handle_request(request)
         chunks: list[str] = []
@@ -94,6 +78,56 @@ class VCRTransport(httpx.BaseTransport):
         )
         return response
 
+    def unused(self) -> int:
+        if self.sequential:
+            return max(0, len(self.cassette.interactions) - self.index)
+        return max(0, len(self.cassette.interactions) - len(self._used))
+
+    def _lookup(self, method: str, url: str, body: dict[str, Any] | None) -> Interaction | None:
+        if not self.sequential:
+            key = request_key(method, url, body)
+            for i, interaction in enumerate(self.cassette.interactions):
+                if i in self._used:
+                    continue
+                if request_key(interaction.method, interaction.url, interaction.request_body) == key:
+                    self._used.add(i)
+                    return interaction
+            return find_interaction(self.cassette, method, url, body)
+        if self.index >= len(self.cassette.interactions):
+            raise httpx.RequestError("No unused cassette interactions left.")
+        expected = self.cassette.interactions[self.index]
+        got = request_key(method, url, body)
+        want = request_key(expected.method, expected.url, expected.request_body)
+        if got != want:
+            raise httpx.RequestError(
+                f"Out-of-order cassette request: expected {expected.method} {expected.url}"
+            )
+        self.index += 1
+        return expected
+
+    def _replay(
+        self, request: httpx.Request, interaction: Interaction, streaming: bool
+    ) -> httpx.Response:
+        if interaction.streaming or streaming:
+            if not interaction.chunks:
+                raise httpx.RequestError("Cassette is missing streaming chunks.")
+            content = join_chunks(interaction.chunks)
+            headers = dict(interaction.response_headers)
+            headers.setdefault("content-type", "text/event-stream")
+            return httpx.Response(
+                status_code=interaction.status_code,
+                headers=headers,
+                content=content,
+                request=request,
+            )
+        content = json.dumps(interaction.response_body or {}).encode()
+        return httpx.Response(
+            status_code=interaction.status_code,
+            headers=interaction.response_headers,
+            content=content,
+            request=request,
+        )
+
 
 class AsyncVCRTransport(httpx.AsyncBaseTransport):
     """Async counterpart of VCRTransport."""
@@ -104,7 +138,7 @@ class AsyncVCRTransport(httpx.AsyncBaseTransport):
         record_mode: bool,
         wrapped: httpx.AsyncBaseTransport | None = None,
     ) -> None:
-        self.sync = VCRTransport(cassette, record_mode)
+        self.sync = VCRTransport(cassette, record_mode, sequential=False)
         self.wrapped = wrapped or httpx.AsyncHTTPTransport()
         self.record_mode = record_mode
         self.cassette = cassette
