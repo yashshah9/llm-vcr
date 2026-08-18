@@ -1,0 +1,23 @@
+name: sample_chat_completion
+interactions:
+  - method: POST
+    url: https://api.openai.com/v1/chat/completions
+    request_headers:
+      content-type: application/json
+    request_body:
+      model: gpt-4o-mini
+      messages:
+        - role: user
+          content: Say hello
+    status_code: 200
+    response_headers:
+      content-type: application/json
+    response_body:
+      id: chatcmpl-test
+      object: chat.completion
+      choices:
+        - index: 0
+          message:
+            role: assistant
+            content: Hello!
+          finish_reason: stop
