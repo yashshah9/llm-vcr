@@ -11,7 +11,7 @@ import httpx
 import pytest
 
 from llm_vcr.cassette import Cassette
-from llm_vcr.transport import VCRTransport
+from llm_vcr.transport import AsyncVCRTransport, VCRTransport
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -53,6 +53,33 @@ def llm_vcr(name: str | None = None) -> Callable[[F], F]:
         return wrapper  # type: ignore[return-value]
 
     return decorator
+
+
+@pytest.fixture
+def llm_vcr_client(request: pytest.FixtureRequest) -> httpx.Client:
+    """pytest fixture that yields an httpx client bound to a named cassette."""
+    cassette_name = getattr(request, "param", request.node.name)
+    cassette_path = CASSETTE_DIR / f"{cassette_name}.yaml"
+    record = RECORD_MODE or not cassette_path.exists()
+    cassette = Cassette(name=str(cassette_name)) if record else Cassette.load(cassette_path)
+    client = httpx.Client(transport=VCRTransport(cassette, record_mode=record))
+    yield client
+    client.close()
+    if record:
+        cassette.save(cassette_path)
+
+
+@pytest.fixture
+async def llm_vcr_async_client(request: pytest.FixtureRequest) -> httpx.AsyncClient:
+    cassette_name = getattr(request, "param", request.node.name)
+    cassette_path = CASSETTE_DIR / f"{cassette_name}.yaml"
+    record = RECORD_MODE or not cassette_path.exists()
+    cassette = Cassette(name=str(cassette_name)) if record else Cassette.load(cassette_path)
+    client = httpx.AsyncClient(transport=AsyncVCRTransport(cassette, record_mode=record))
+    yield client
+    await client.aclose()
+    if record:
+        cassette.save(cassette_path)
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:

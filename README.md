@@ -2,17 +2,18 @@
 
 Record and replay LLM HTTP traffic for **deterministic, key-free pytest runs**.
 
-> **Status:** v0.1 foundation — httpx transport replay works; streaming SSE and tool-call loops are next.
+> **Status:** v0.2 — SSE streaming replay, volatile-field matching, and async transport. Multi-step tool-call loops are next.
 
 ## Problem
 
 Testing code that calls LLMs is slow, flaky, and expensive. Hand-written mocks drift from reality. Generic HTTP cassettes (VCR.py) don't understand LLM request shapes or redact API keys well.
 
-## Key features (v0.1)
+## Key features (v0.2)
 
-- **pytest plugin** — `@llm_vcr` decorator or `--llm-vcr-record` flag
-- **httpx transport** — intercept at HTTP layer, works with any client using httpx
-- **YAML cassettes** — human-readable, committable fixtures
+- **pytest plugin** — `@llm_vcr` decorator, `llm_vcr_client` fixture, `--llm-vcr-record`
+- **httpx transport** — sync + async, including `client.stream(...)`
+- **YAML cassettes** — `streaming: true` + `chunks` for SSE
+- **Matching** — drops volatile fields (`user`, `request_id`, timestamps, `seed`)
 - **Automatic redaction** — strips api_key, token, authorization fields
 
 ## Architecture
@@ -90,18 +91,17 @@ pytest tests/ -v
 
 ## Roadmap
 
-- [ ] SSE streaming chunk replay
+- [x] SSE streaming chunk replay
 - [ ] Tool-call multi-step loops
-- [ ] Async httpx support
+- [x] Async httpx transport (fixture + replay)
 - [ ] OpenAI + Anthropic semantic request matching
+
+## Known limitations (v0.2)
+
+- Tool-call multi-step ordered cassettes are not implemented
+- Matching drops a small set of volatile keys; not full semantic/alias matching
+- Record mode for streaming stores chunks, not per-event timestamps
 
 ## License
 
 MIT
-
-## Known limitations (v0.1)
-
-- Sync httpx only
-- Exact JSON body matching (no semantic normalization yet)
-- No streaming replay
-- Decorator injects `client` kwarg — fixture API coming

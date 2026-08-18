@@ -10,6 +10,7 @@ from typing import Any
 
 import yaml
 
+from llm_vcr.matching import normalize_body
 from llm_vcr.redaction import redact_dict
 
 
@@ -24,6 +25,8 @@ class Interaction:
     status_code: int = 200
     response_headers: dict[str, str] = field(default_factory=dict)
     response_body: dict[str, Any] | None = None
+    streaming: bool = False
+    chunks: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -46,6 +49,8 @@ class Cassette:
                     "status_code": i.status_code,
                     "response_headers": i.response_headers,
                     "response_body": i.response_body,
+                    "streaming": i.streaming,
+                    "chunks": i.chunks,
                 }
                 for i in self.interactions
             ],
@@ -64,6 +69,8 @@ class Cassette:
                 status_code=i.get("status_code", 200),
                 response_headers=i.get("response_headers", {}),
                 response_body=i.get("response_body"),
+                streaming=bool(i.get("streaming", False)),
+                chunks=list(i.get("chunks") or []),
             )
             for i in raw.get("interactions", [])
         ]
@@ -71,8 +78,11 @@ class Cassette:
 
 
 def request_key(method: str, url: str, body: dict[str, Any] | None) -> str:
-    """Stable hash for matching requests."""
-    payload = json.dumps({"method": method, "url": url, "body": body or {}}, sort_keys=True)
+    """Stable hash for matching requests (volatile fields stripped)."""
+    payload = json.dumps(
+        {"method": method, "url": url, "body": normalize_body(body)},
+        sort_keys=True,
+    )
     return hashlib.sha256(payload.encode()).hexdigest()[:16]
 
 

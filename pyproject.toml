@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "llm-vcr"
-version = "0.1.0"
+version = "0.2.0"
 description = "Record and replay LLM HTTP traffic for deterministic pytest runs"
 readme = "README.md"
 license = "MIT"
@@ -30,6 +30,8 @@ packages = ["src/llm_vcr"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 
 [tool.ruff]
 target-version = "py311"
