@@ -7,3 +7,12 @@ services:
       - .:/app
     working_dir: /app
     command: ["pytest", "tests/", "-v"]
+
+  health:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: ["llm-vcr", "health"]

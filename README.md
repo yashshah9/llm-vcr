@@ -51,6 +51,7 @@ llm-vcr health
 
 ```bash
 docker compose run --rm test
+docker compose run --rm health
 ```
 
 ## Configuration
@@ -92,13 +93,13 @@ pytest tests/ -v
 ## Roadmap
 
 - [x] SSE streaming chunk replay
-- [ ] Tool-call multi-step loops
+- [x] Tool-call multi-step loops (`@llm_vcr(..., sequential=True)`)
 - [x] Async httpx transport (fixture + replay)
 - [ ] OpenAI + Anthropic semantic request matching
 
-## Known limitations (v0.2)
+## Known limitations (v0.3)
 
-- Tool-call multi-step ordered cassettes are not implemented
+- Sequential matching is opt-in (`sequential=True`); default matching is still hash-based
 - Matching drops a small set of volatile keys; not full semantic/alias matching
 - Record mode for streaming stores chunks, not per-event timestamps
 

@@ -59,7 +59,11 @@ class Cassette:
 
     @classmethod
     def load(cls, path: Path) -> Cassette:
+        if not path.exists():
+            raise FileNotFoundError(f"Cassette not found: {path}")
         raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+        if not isinstance(raw, dict):
+            raise ValueError(f"Cassette {path} is not a YAML mapping")
         interactions = [
             Interaction(
                 method=i["method"],

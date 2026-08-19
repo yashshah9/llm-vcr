@@ -14,8 +14,9 @@ def main(argv: list[str] | None = None) -> None:
     sub = parser.add_subparsers(dest="command")
     sub.add_parser("health", help="Verify installation")
     args = parser.parse_args(argv)
-    if args.command == "health":
+    if args.command in {None, "health"}:
         print(f"llm-vcr {__version__} OK")
+        print("  pytest plugin: @llm_vcr / llm_vcr_client / --llm-vcr-record")
         return
     parser.print_help()
     sys.exit(1)

@@ -100,7 +100,8 @@ class VCRTransport(httpx.BaseTransport):
         want = request_key(expected.method, expected.url, expected.request_body)
         if got != want:
             raise httpx.RequestError(
-                f"Out-of-order cassette request: expected {expected.method} {expected.url}"
+                f"Out-of-order cassette request at step {self.index}: "
+                f"expected {expected.method} {expected.url}, got {method} {url}"
             )
         self.index += 1
         return expected
