@@ -10,7 +10,7 @@ from typing import Any
 
 import yaml
 
-from llm_vcr.matching import normalize_body
+from llm_vcr.matching import MatcherName, bodies_equal_semantic, normalize_body
 from llm_vcr.redaction import redact_dict
 
 
@@ -95,7 +95,17 @@ def find_interaction(
     method: str,
     url: str,
     body: dict[str, Any] | None,
+    matcher: MatcherName = "exact",
 ) -> Interaction | None:
+    if matcher == "semantic":
+        for interaction in cassette.interactions:
+            if (
+                interaction.method == method
+                and interaction.url == url
+                and bodies_equal_semantic(interaction.request_body, body)
+            ):
+                return interaction
+        return None
     key = request_key(method, url, body)
     for interaction in cassette.interactions:
         if request_key(interaction.method, interaction.url, interaction.request_body) == key:

@@ -14,6 +14,7 @@ import httpx
 import pytest
 
 from llm_vcr.cassette import Cassette
+from llm_vcr.matching import MatcherName
 from llm_vcr.transport import AsyncVCRTransport, VCRTransport
 
 F = TypeVar("F", bound=Callable[..., Any])
@@ -35,7 +36,11 @@ def _bind_client(func: Callable[..., Any], kwargs: dict[str, Any], client: httpx
         kwargs["client"] = client
 
 
-def llm_vcr(name: str | None = None, sequential: bool = False) -> Callable[[F], F]:
+def llm_vcr(
+    name: str | None = None,
+    sequential: bool = False,
+    matcher: MatcherName = "exact",
+) -> Callable[[F], F]:
     """Decorator to enable cassette record/replay for a test function."""
 
     def decorator(func: F) -> F:
@@ -51,7 +56,9 @@ def llm_vcr(name: str | None = None, sequential: bool = False) -> Callable[[F], 
             else:
                 cassette = Cassette.load(cassette_path)
 
-            transport = VCRTransport(cassette, record_mode=record, sequential=sequential)
+            transport = VCRTransport(
+                cassette, record_mode=record, sequential=sequential, matcher=matcher
+            )
             client = httpx.Client(transport=transport)
 
             try:

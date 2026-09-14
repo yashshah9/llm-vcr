@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pytest-llm-vcr"
-version = "0.4.0"
+version = "0.5.0"
 description = "Record and replay LLM HTTP traffic for deterministic pytest runs"
 readme = "README.md"
 license = "MIT"

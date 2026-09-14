@@ -42,7 +42,7 @@ def main(argv: list[str] | None = None) -> None:
         right = _load_body(args.right, args.index)
         lines = diff_bodies(left, right)
         if not lines:
-            print("match (after normalization)")
+            print("match (semantically equal after normalization)")
             return
         print("differences (normalized):")
         for line in lines:

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0] - 2026-09-14
+
+### Added
+- Semantic request matcher — compare messages by role+content (ignore tool_call ids), tools by function name, model date-strip + aliases
+- `@llm_vcr(matcher="semantic")` and `VCRTransport(..., matcher="semantic"|"exact")` (`exact` remains default)
+- `llm-vcr diff` reports when bodies are semantically equal after normalization
+
 ## [0.4.0] - 2026-09-14
 
 ### Added

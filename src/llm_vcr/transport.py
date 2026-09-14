@@ -14,6 +14,7 @@ from llm_vcr.cassette import (
     record_interaction,
     request_key,
 )
+from llm_vcr.matching import MatcherName, bodies_equal_semantic
 from llm_vcr.streaming import join_chunks, parse_sse
 
 
@@ -33,11 +34,13 @@ class VCRTransport(httpx.BaseTransport):
         record_mode: bool,
         wrapped: httpx.BaseTransport | None = None,
         sequential: bool = False,
+        matcher: MatcherName = "exact",
     ) -> None:
         self.cassette = cassette
         self.record_mode = record_mode
         self.wrapped = wrapped or httpx.HTTPTransport()
         self.sequential = sequential
+        self.matcher = matcher
         self.index = 0
         self._used: set[int] = set()
 
@@ -89,25 +92,30 @@ class VCRTransport(httpx.BaseTransport):
             return max(0, len(self.cassette.interactions) - self.index)
         return max(0, len(self.cassette.interactions) - len(self._used))
 
+    def _matches(
+        self, method: str, url: str, body: dict[str, Any] | None, other: Interaction
+    ) -> bool:
+        if other.method != method or other.url != url:
+            return False
+        if self.matcher == "semantic":
+            return bodies_equal_semantic(other.request_body, body)
+        return request_key(method, url, body) == request_key(
+            other.method, other.url, other.request_body
+        )
+
     def _lookup(self, method: str, url: str, body: dict[str, Any] | None) -> Interaction | None:
         if not self.sequential:
-            key = request_key(method, url, body)
             for i, interaction in enumerate(self.cassette.interactions):
                 if i in self._used:
                     continue
-                ikey = request_key(
-                    interaction.method, interaction.url, interaction.request_body
-                )
-                if ikey == key:
+                if self._matches(method, url, body, interaction):
                     self._used.add(i)
                     return interaction
-            return find_interaction(self.cassette, method, url, body)
+            return find_interaction(self.cassette, method, url, body, matcher=self.matcher)
         if self.index >= len(self.cassette.interactions):
             raise httpx.RequestError("No unused cassette interactions left.")
         expected = self.cassette.interactions[self.index]
-        got = request_key(method, url, body)
-        want = request_key(expected.method, expected.url, expected.request_body)
-        if got != want:
+        if not self._matches(method, url, body, expected):
             raise httpx.RequestError(
                 f"Out-of-order cassette request at step {self.index}: "
                 f"expected {expected.method} {expected.url}, got {method} {url}"
@@ -147,11 +155,13 @@ class AsyncVCRTransport(httpx.AsyncBaseTransport):
         cassette: Cassette,
         record_mode: bool,
         wrapped: httpx.AsyncBaseTransport | None = None,
+        matcher: MatcherName = "exact",
     ) -> None:
-        self.sync = VCRTransport(cassette, record_mode, sequential=False)
+        self.sync = VCRTransport(cassette, record_mode, sequential=False, matcher=matcher)
         self.wrapped = wrapped or httpx.AsyncHTTPTransport()
         self.record_mode = record_mode
         self.cassette = cassette
+        self.matcher = matcher
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
         if not self.record_mode:
