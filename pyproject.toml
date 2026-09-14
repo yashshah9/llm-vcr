@@ -4,16 +4,22 @@ build-backend = "hatchling.build"
 
 [project]
 name = "llm-vcr"
-version = "0.3.0"
+version = "0.4.0"
 description = "Record and replay LLM HTTP traffic for deterministic pytest runs"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
+authors = [{ name = "Yash Shah", email = "yash376351@gmail.com" }]
 dependencies = [
     "httpx>=0.27",
     "pyyaml>=6.0",
     "structlog>=24.1",
 ]
+
+[project.urls]
+Homepage = "https://github.com/yashshah9/llm-vcr"
+Repository = "https://github.com/yashshah9/llm-vcr"
+Issues = "https://github.com/yashshah9/llm-vcr/issues"
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "ruff>=0.4", "mypy>=1.9", "types-PyYAML>=6.0"]

@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.0] - 2026-09-14
+
+### Added
+- Model-date normalize — strip trailing `-YYYY-MM-DD` from `model` during cassette matching
+- `llm-vcr diff` CLI — show normalized differences between JSON bodies or cassette interactions
+
 ## [0.3.0] - 2026-08-19
 
 ### Added
