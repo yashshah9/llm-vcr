@@ -7,7 +7,13 @@ from typing import Any
 
 import httpx
 
-from llm_vcr.cassette import Cassette, Interaction, find_interaction, record_interaction, request_key
+from llm_vcr.cassette import (
+    Cassette,
+    Interaction,
+    find_interaction,
+    record_interaction,
+    request_key,
+)
 from llm_vcr.streaming import join_chunks, parse_sse
 
 
@@ -89,7 +95,10 @@ class VCRTransport(httpx.BaseTransport):
             for i, interaction in enumerate(self.cassette.interactions):
                 if i in self._used:
                     continue
-                if request_key(interaction.method, interaction.url, interaction.request_body) == key:
+                ikey = request_key(
+                    interaction.method, interaction.url, interaction.request_body
+                )
+                if ikey == key:
                     self._used.add(i)
                     return interaction
             return find_interaction(self.cassette, method, url, body)

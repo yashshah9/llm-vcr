@@ -56,7 +56,7 @@ Testing code that calls LLMs is slow, flaky, and expensive. Hand-written mocks d
 ## Installation
 
 ```bash
-pip install llm-vcr
+pip install pytest-llm-vcr
 pip install -e ".[dev]"  # from source
 ```
 

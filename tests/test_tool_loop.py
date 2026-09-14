@@ -21,9 +21,13 @@ def test_three_step_tool_loop_replays_in_order() -> None:
     client = _client()
     first = client.post(
         URL,
-        json={"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "What's the weather in Paris?"}]},
+        json={
+            "model": "gpt-4o-mini",
+            "messages": [{"role": "user", "content": "What's the weather in Paris?"}],
+        },
     )
-    assert first.json()["choices"][0]["message"]["tool_calls"][0]["function"]["name"] == "get_weather"
+    tool_name = first.json()["choices"][0]["message"]["tool_calls"][0]["function"]["name"]
+    assert tool_name == "get_weather"
     second = client.post(
         URL,
         json={
@@ -60,7 +64,10 @@ def test_unused_interactions_counted() -> None:
     client = httpx.Client(transport=transport)
     client.post(
         URL,
-        json={"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "What's the weather in Paris?"}]},
+        json={
+            "model": "gpt-4o-mini",
+            "messages": [{"role": "user", "content": "What's the weather in Paris?"}],
+        },
     )
     assert transport.unused() == 1
     client.close()

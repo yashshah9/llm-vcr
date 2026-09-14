@@ -1,6 +1,5 @@
 """Tests for cassette replay."""
 
-import json
 from pathlib import Path
 
 import httpx

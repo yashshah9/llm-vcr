@@ -90,7 +90,12 @@ def request_key(method: str, url: str, body: dict[str, Any] | None) -> str:
     return hashlib.sha256(payload.encode()).hexdigest()[:16]
 
 
-def find_interaction(cassette: Cassette, method: str, url: str, body: dict[str, Any] | None) -> Interaction | None:
+def find_interaction(
+    cassette: Cassette,
+    method: str,
+    url: str,
+    body: dict[str, Any] | None,
+) -> Interaction | None:
     key = request_key(method, url, body)
     for interaction in cassette.interactions:
         if request_key(interaction.method, interaction.url, interaction.request_body) == key:

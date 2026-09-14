@@ -32,7 +32,10 @@ def test_streaming_replay_yields_chunks() -> None:
             "messages": [{"role": "user", "content": "Say hello"}],
         },
     ) as response:
-        text = "".join(line.decode() if isinstance(line, bytes) else line for line in response.iter_bytes())
+        text = "".join(
+            line.decode() if isinstance(line, bytes) else line
+            for line in response.iter_bytes()
+        )
     assert "Hello" in text
     assert "[DONE]" in text
     client.close()
