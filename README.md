@@ -2,6 +2,7 @@
 
 Record and replay LLM HTTP traffic for **deterministic, key-free pytest runs**.
 
+[![PyPI](https://img.shields.io/pypi/v/pytest-llm-vcr.svg)](https://pypi.org/project/pytest-llm-vcr/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![CI](https://github.com/yashshah9/llm-vcr/actions/workflows/ci.yml/badge.svg)](https://github.com/yashshah9/llm-vcr/actions/workflows/ci.yml)
@@ -11,8 +12,9 @@ Record and replay LLM HTTP traffic for **deterministic, key-free pytest runs**.
 ## 60-second try
 
 ```bash
-docker compose run --rm health  # llm-vcr health
-docker compose run --rm test    # pytest (replay, no API key)
+pip install pytest-llm-vcr
+llm-vcr health
+docker compose run --rm test    # cassette replay, no API key
 ```
 
 ## Why this vs alternatives
