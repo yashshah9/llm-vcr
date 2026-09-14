@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.0] - 2026-09-14
+
+### Added
+- Anthropic Messages API matching — `providers/anthropic.py` normalizes bodies (drop `metadata`, model date-strip, messages/system/tools; strip `tool_use` ids under `matcher="semantic"`)
+- Anthropic URL normalize — `api.anthropic.com` query/fragment stripped for cassette matches
+- Compact model date-strip — `-YYYYMMDD` suffixes (Anthropic-style) via `normalize_model`
+- Cassette fixture + unit tests for Anthropic record/replay
+
 ## [0.5.0] - 2026-09-14
 
 ### Added

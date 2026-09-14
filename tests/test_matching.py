@@ -23,6 +23,11 @@ def test_normalize_model_applies_alias() -> None:
     assert normalize_model("gpt-4o-2024-08-06") == "gpt-4o"
 
 
+def test_normalize_model_strips_anthropic_compact_date() -> None:
+    assert normalize_model("claude-3-5-sonnet-20241022") == "claude-3-5-sonnet"
+    assert normalize_model("claude-3-5-sonnet") == "claude-3-5-sonnet"
+
+
 def test_normalize_body_drops_volatile_and_aliases_model() -> None:
     body = {
         "model": "gpt-4o-mini-2024-07-18",

@@ -22,18 +22,38 @@ MODEL_ALIASES: dict[str, str] = {
 
 MatcherName = Literal["exact", "semantic"]
 
-# Strip dated OpenAI-style suffixes: gpt-4o-mini-2024-07-18 → gpt-4o-mini
+# Strip dated suffixes: gpt-4o-mini-2024-07-18 → gpt-4o-mini
+# Anthropic uses compact dates: claude-3-5-sonnet-20241022 → claude-3-5-sonnet
 _MODEL_DATE = re.compile(r"^(.*?)-\d{4}-\d{2}-\d{2}$")
+_MODEL_DATE_COMPACT = re.compile(r"^(.*?)-\d{8}$")
 
 
 def normalize_model(model: str) -> str:
-    match = _MODEL_DATE.match(model)
+    match = _MODEL_DATE.match(model) or _MODEL_DATE_COMPACT.match(model)
     base = match.group(1) if match else model
     return MODEL_ALIASES.get(base, base)
 
 
-def normalize_body(body: dict[str, Any] | None) -> dict[str, Any]:
+def normalize_url(url: str) -> str:
+    """Provider-aware URL normalize (Anthropic: strip query/fragment)."""
+    from llm_vcr.providers.anthropic import is_anthropic_url, normalize_anthropic_url
+
+    if is_anthropic_url(url):
+        return normalize_anthropic_url(url)
+    return url
+
+
+def normalize_body(
+    body: dict[str, Any] | None,
+    *,
+    url: str | None = None,
+) -> dict[str, Any]:
     """Drop volatile keys and normalize model strings (exact-match baseline)."""
+    if url is not None:
+        from llm_vcr.providers.anthropic import is_anthropic_url, normalize_anthropic_body
+
+        if is_anthropic_url(url):
+            return normalize_anthropic_body(body)
     if not body:
         return {}
     out: dict[str, Any] = {}
@@ -96,8 +116,20 @@ def _tool_sort_key(tool: Any) -> str:
     return str(tool.get("name", ""))
 
 
-def semantic_normalize_body(body: dict[str, Any] | None) -> dict[str, Any]:
+def semantic_normalize_body(
+    body: dict[str, Any] | None,
+    *,
+    url: str | None = None,
+) -> dict[str, Any]:
     """Normalize for semantic equality: volatile keys, model aliases, messages, tools."""
+    if url is not None:
+        from llm_vcr.providers.anthropic import (
+            is_anthropic_url,
+            semantic_normalize_anthropic_body,
+        )
+
+        if is_anthropic_url(url):
+            return semantic_normalize_anthropic_body(body)
     base = normalize_body(body)
     out = dict(base)
     if isinstance(out.get("messages"), list):
@@ -116,17 +148,21 @@ def semantic_normalize_body(body: dict[str, Any] | None) -> dict[str, Any]:
 def bodies_equal_semantic(
     left: dict[str, Any] | None,
     right: dict[str, Any] | None,
+    *,
+    url: str | None = None,
 ) -> bool:
-    return semantic_normalize_body(left) == semantic_normalize_body(right)
+    return semantic_normalize_body(left, url=url) == semantic_normalize_body(right, url=url)
 
 
 def diff_bodies(
     left: dict[str, Any] | None,
     right: dict[str, Any] | None,
+    *,
+    url: str | None = None,
 ) -> list[str]:
     """Human-readable differences after semantic normalization."""
-    a = semantic_normalize_body(left)
-    b = semantic_normalize_body(right)
+    a = semantic_normalize_body(left, url=url)
+    b = semantic_normalize_body(right, url=url)
     lines: list[str] = []
     keys = sorted(set(a) | set(b))
     for key in keys:

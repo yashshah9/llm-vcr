@@ -14,7 +14,7 @@ from llm_vcr.cassette import (
     record_interaction,
     request_key,
 )
-from llm_vcr.matching import MatcherName, bodies_equal_semantic
+from llm_vcr.matching import MatcherName, bodies_equal_semantic, normalize_url
 from llm_vcr.streaming import join_chunks, parse_sse
 
 
@@ -95,10 +95,10 @@ class VCRTransport(httpx.BaseTransport):
     def _matches(
         self, method: str, url: str, body: dict[str, Any] | None, other: Interaction
     ) -> bool:
-        if other.method != method or other.url != url:
+        if other.method != method or normalize_url(other.url) != normalize_url(url):
             return False
         if self.matcher == "semantic":
-            return bodies_equal_semantic(other.request_body, body)
+            return bodies_equal_semantic(other.request_body, body, url=url)
         return request_key(method, url, body) == request_key(
             other.method, other.url, other.request_body
         )

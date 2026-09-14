@@ -7,7 +7,7 @@ Record and replay LLM HTTP traffic for **deterministic, key-free pytest runs**.
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![CI](https://github.com/yashshah9/llm-vcr/actions/workflows/ci.yml/badge.svg)](https://github.com/yashshah9/llm-vcr/actions/workflows/ci.yml)
 
-> **Status:** v0.5 — SSE streaming replay, sequential tool-call cassettes, model-date normalize, semantic matcher, and `llm-vcr diff`.
+> **Status:** v0.6 — SSE streaming replay, sequential tool-call cassettes, OpenAI + Anthropic semantic matching, model-date normalize, and `llm-vcr diff`.
 
 ## 60-second try
 
@@ -30,14 +30,14 @@ docker compose run --rm test    # cassette replay, no API key
 
 Testing code that calls LLMs is slow, flaky, and expensive. Hand-written mocks drift from reality. Generic HTTP cassettes (VCR.py) don't understand LLM request shapes or redact API keys well.
 
-## Key features (v0.5)
+## Key features (v0.6)
 
 - **pytest plugin** — `@llm_vcr` decorator, `llm_vcr_client` fixture, `--llm-vcr-record`
 - **httpx transport** — sync + async, including `client.stream(...)`
 - **YAML cassettes** — `streaming: true` + `chunks` for SSE
-- **Matching** — exact (default) or `matcher="semantic"` (volatile keys, model aliases, messages by role+content, tools by name)
+- **Matching** — exact (default) or `matcher="semantic"` (volatile keys, model aliases, messages by role+content, tools by name); Anthropic Messages API via `api.anthropic.com` URL detection
 - **`llm-vcr diff`** — show normalized differences between JSON bodies or cassette interactions
-- **Automatic redaction** — strips api_key, token, authorization fields
+- **Automatic redaction** — strips api_key, `x-api-key`, token, authorization fields
 
 ## Architecture
 
@@ -117,6 +117,27 @@ llm-vcr diff cassette_a.yaml cassette_b.yaml --index 0
 
 Model strings with a trailing `-YYYY-MM-DD` normalize equal so dated aliases do not show as diffs.
 
+### Anthropic Messages API
+
+Point httpx at `https://api.anthropic.com/v1/messages` the same way as OpenAI — record once, replay in CI without a key. Query strings (e.g. beta flags) are stripped for matching. Use `matcher="semantic"` to ignore `metadata` and `tool_use` / `tool_result` ids:
+
+```python
+@llm_vcr("anthropic_chat", matcher="semantic")
+def test_anthropic(client: httpx.Client) -> None:
+    resp = client.post(
+        "https://api.anthropic.com/v1/messages",
+        json={
+            "model": "claude-3-5-sonnet",
+            "max_tokens": 64,
+            "messages": [{"role": "user", "content": "Say hello"}],
+        },
+        headers={"x-api-key": "sk-ant-...", "anthropic-version": "2023-06-01"},
+    )
+    assert resp.json()["content"][0]["text"]
+```
+
+`x-api-key` is redacted in cassette bodies when present.
+
 ## Running tests
 
 ```bash
@@ -131,10 +152,10 @@ pytest tests/ -v
 - [x] Model-date normalize + `llm-vcr diff`
 - [x] OpenAI + Anthropic semantic request matching (`matcher="semantic"`)
 
-## Known limitations (v0.4)
+## Known limitations (v0.6)
 
 - Sequential matching is opt-in (`sequential=True`); default matching is still hash-based
-- Matching: exact hash (default) or semantic (volatile keys, model aliases, message/tool shape)
+- Matching: exact hash (default) or semantic (volatile keys, model aliases, message/tool shape; Anthropic when host is `api.anthropic.com`)
 - Record mode for streaming stores chunks, not per-event timestamps
 
 ## License

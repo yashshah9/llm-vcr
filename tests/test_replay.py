@@ -33,3 +33,19 @@ def test_find_interaction_matches() -> None:
     found = find_interaction(cassette, i.method, i.url, i.request_body)
     assert found is not None
     assert found.response_body["id"] == "chatcmpl-test"
+
+
+def test_anthropic_cassette_replay() -> None:
+    path = Path(__file__).parent / "cassettes" / "test_anthropic_replay.yaml"
+    cassette = Cassette.load(path)
+    transport = VCRTransport(cassette, record_mode=False)
+    client = httpx.Client(transport=transport)
+    interaction = cassette.interactions[0]
+    response = client.post(
+        "https://api.anthropic.com/v1/messages?beta=tools-2024-04-04",
+        json=interaction.request_body,
+        headers={"content-type": "application/json", "x-api-key": "sk-ant-test"},
+    )
+    assert response.status_code == 200
+    assert response.json()["content"][0]["text"] == "Hello!"
+    client.close()

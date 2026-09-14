@@ -38,9 +38,10 @@ def main(argv: list[str] | None = None) -> None:
         print("  commands: health | diff")
         return
     if args.command == "diff":
-        left = _load_body(args.left, args.index)
-        right = _load_body(args.right, args.index)
-        lines = diff_bodies(left, right)
+        left, left_url = _load_body(args.left, args.index)
+        right, right_url = _load_body(args.right, args.index)
+        url = left_url or right_url
+        lines = diff_bodies(left, right, url=url)
         if not lines:
             print("match (semantically equal after normalization)")
             return
@@ -52,21 +53,22 @@ def main(argv: list[str] | None = None) -> None:
     sys.exit(1)
 
 
-def _load_body(path: str, index: int) -> dict:
+def _load_body(path: str, index: int) -> tuple[dict, str | None]:
     if path == "-":
-        return json.load(sys.stdin)
+        return json.load(sys.stdin), None
     p = Path(path)
     text = p.read_text(encoding="utf-8")
     if p.suffix in {".yaml", ".yml"}:
         cassette = Cassette.load(p)
         if index < 0 or index >= len(cassette.interactions):
             raise SystemExit(f"cassette index {index} out of range")
-        body = cassette.interactions[index].request_body
-        return body if isinstance(body, dict) else {}
+        interaction = cassette.interactions[index]
+        body = interaction.request_body
+        return (body if isinstance(body, dict) else {}), interaction.url
     parsed = json.loads(text)
     if not isinstance(parsed, dict):
         raise SystemExit("JSON body must be an object")
-    return normalize_body(parsed)
+    return normalize_body(parsed), None
 
 
 if __name__ == "__main__":

@@ -10,7 +10,12 @@ from typing import Any
 
 import yaml
 
-from llm_vcr.matching import MatcherName, bodies_equal_semantic, normalize_body
+from llm_vcr.matching import (
+    MatcherName,
+    bodies_equal_semantic,
+    normalize_body,
+    normalize_url,
+)
 from llm_vcr.redaction import redact_dict
 
 
@@ -83,8 +88,13 @@ class Cassette:
 
 def request_key(method: str, url: str, body: dict[str, Any] | None) -> str:
     """Stable hash for matching requests (volatile fields stripped)."""
+    matched_url = normalize_url(url)
     payload = json.dumps(
-        {"method": method, "url": url, "body": normalize_body(body)},
+        {
+            "method": method,
+            "url": matched_url,
+            "body": normalize_body(body, url=url),
+        },
         sort_keys=True,
     )
     return hashlib.sha256(payload.encode()).hexdigest()[:16]
@@ -97,12 +107,15 @@ def find_interaction(
     body: dict[str, Any] | None,
     matcher: MatcherName = "exact",
 ) -> Interaction | None:
+    matched_url = normalize_url(url)
     if matcher == "semantic":
         for interaction in cassette.interactions:
             if (
                 interaction.method == method
-                and interaction.url == url
-                and bodies_equal_semantic(interaction.request_body, body)
+                and normalize_url(interaction.url) == matched_url
+                and bodies_equal_semantic(
+                    interaction.request_body, body, url=url
+                )
             ):
                 return interaction
         return None
