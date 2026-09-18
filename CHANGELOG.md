@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.6.1] - 2026-09-19
+
+- Redact auth headers; no cassette reuse; fixture sequential/matcher
+
+
 ## [0.6.0] - 2026-09-14
 
 ### Added

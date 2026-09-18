@@ -80,16 +80,51 @@ def llm_vcr(
     return decorator
 
 
+def _fixture_opts(request: pytest.FixtureRequest) -> tuple[str, bool, MatcherName]:
+    """Resolve cassette name / sequential / matcher from param or @pytest.mark.llm_vcr."""
+    param = getattr(request, "param", None)
+    name: str
+    sequential = False
+    matcher: MatcherName = "exact"
+    if isinstance(param, dict):
+        name = str(param.get("name", request.node.name))
+        sequential = bool(param.get("sequential", False))
+        matcher = param.get("matcher", "exact")  # type: ignore[assignment]
+    elif param is not None:
+        name = str(param)
+    else:
+        name = request.node.name
+    marker = request.node.get_closest_marker("llm_vcr")
+    if marker is not None:
+        if marker.kwargs.get("name") is not None:
+            name = str(marker.kwargs["name"])
+        sequential = bool(marker.kwargs.get("sequential", sequential))
+        matcher = marker.kwargs.get("matcher", matcher)  # type: ignore[assignment]
+    return name, sequential, matcher
+
+
 @pytest.fixture
 def llm_vcr_client(request: pytest.FixtureRequest) -> Generator[httpx.Client, None, None]:
-    """pytest fixture that yields an httpx client bound to a named cassette."""
-    cassette_name = getattr(request, "param", request.node.name)
+    """pytest fixture that yields an httpx client bound to a named cassette.
+
+    Configure via ``@pytest.mark.llm_vcr(sequential=True, matcher="semantic")``
+    or ``@pytest.mark.parametrize("llm_vcr_client", [{"name": "...", "sequential": True}], indirect=True)``.
+    """
+    cassette_name, sequential, matcher = _fixture_opts(request)
     cassette_path = _cassette_dir() / f"{cassette_name}.yaml"
     record = _recording() or not cassette_path.exists()
     cassette = Cassette(name=str(cassette_name)) if record else Cassette.load(cassette_path)
-    client = httpx.Client(transport=VCRTransport(cassette, record_mode=record))
+    transport = VCRTransport(
+        cassette, record_mode=record, sequential=sequential, matcher=matcher
+    )
+    client = httpx.Client(transport=transport)
     yield client
     client.close()
+    if sequential and not record and transport.unused():
+        warnings.warn(
+            f"cassette {cassette_name} has {transport.unused()} unused interaction(s)",
+            stacklevel=2,
+        )
     if record:
         cassette.save(cassette_path)
 
@@ -98,13 +133,21 @@ def llm_vcr_client(request: pytest.FixtureRequest) -> Generator[httpx.Client, No
 async def llm_vcr_async_client(
     request: pytest.FixtureRequest,
 ) -> AsyncGenerator[httpx.AsyncClient, None]:
-    cassette_name = getattr(request, "param", request.node.name)
+    cassette_name, sequential, matcher = _fixture_opts(request)
     cassette_path = _cassette_dir() / f"{cassette_name}.yaml"
     record = _recording() or not cassette_path.exists()
     cassette = Cassette(name=str(cassette_name)) if record else Cassette.load(cassette_path)
-    client = httpx.AsyncClient(transport=AsyncVCRTransport(cassette, record_mode=record))
+    transport = AsyncVCRTransport(
+        cassette, record_mode=record, sequential=sequential, matcher=matcher
+    )
+    client = httpx.AsyncClient(transport=transport)
     yield client
     await client.aclose()
+    if sequential and not record and transport.sync.unused():
+        warnings.warn(
+            f"cassette {cassette_name} has {transport.sync.unused()} unused interaction(s)",
+            stacklevel=2,
+        )
     if record:
         cassette.save(cassette_path)
 
@@ -116,3 +159,8 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 def pytest_configure(config: pytest.Config) -> None:
     if config.getoption("--llm-vcr-record"):
         os.environ["LLM_VCR_RECORD"] = "true"
+    config.addinivalue_line(
+        "markers",
+        "llm_vcr(name=None, sequential=False, matcher='exact'): "
+        "configure llm_vcr_client / llm_vcr_async_client fixtures",
+    )

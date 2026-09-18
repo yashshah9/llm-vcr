@@ -10,7 +10,6 @@ import httpx
 from llm_vcr.cassette import (
     Cassette,
     Interaction,
-    find_interaction,
     record_interaction,
     request_key,
 )
@@ -111,7 +110,7 @@ class VCRTransport(httpx.BaseTransport):
                 if self._matches(method, url, body, interaction):
                     self._used.add(i)
                     return interaction
-            return find_interaction(self.cassette, method, url, body, matcher=self.matcher)
+            return None
         if self.index >= len(self.cassette.interactions):
             raise httpx.RequestError("No unused cassette interactions left.")
         expected = self.cassette.interactions[self.index]
@@ -156,12 +155,16 @@ class AsyncVCRTransport(httpx.AsyncBaseTransport):
         record_mode: bool,
         wrapped: httpx.AsyncBaseTransport | None = None,
         matcher: MatcherName = "exact",
+        sequential: bool = False,
     ) -> None:
-        self.sync = VCRTransport(cassette, record_mode, sequential=False, matcher=matcher)
+        self.sync = VCRTransport(
+            cassette, record_mode, sequential=sequential, matcher=matcher
+        )
         self.wrapped = wrapped or httpx.AsyncHTTPTransport()
         self.record_mode = record_mode
         self.cassette = cassette
         self.matcher = matcher
+        self.sequential = sequential
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
         if not self.record_mode:

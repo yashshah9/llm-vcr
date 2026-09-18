@@ -132,4 +132,8 @@ def record_interaction(cassette: Cassette, interaction: Interaction) -> None:
         interaction.request_body = redact_dict(interaction.request_body)
     if interaction.response_body:
         interaction.response_body = redact_dict(interaction.response_body)
+    if interaction.request_headers:
+        interaction.request_headers = redact_dict(interaction.request_headers)
+    if interaction.response_headers:
+        interaction.response_headers = redact_dict(interaction.response_headers)
     cassette.interactions.append(interaction)
