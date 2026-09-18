@@ -51,7 +51,8 @@ def test_fixture_sequential_via_marker(llm_vcr_client: httpx.Client) -> None:
             ],
         },
     )
-    assert "sunny" in second.json()["choices"][0]["message"]["content"].lower() or second.status_code == 200
+    content = second.json()["choices"][0]["message"]["content"].lower()
+    assert "sunny" in content or second.status_code == 200
 
 
 @pytest.mark.parametrize(

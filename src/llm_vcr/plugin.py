@@ -108,7 +108,7 @@ def llm_vcr_client(request: pytest.FixtureRequest) -> Generator[httpx.Client, No
     """pytest fixture that yields an httpx client bound to a named cassette.
 
     Configure via ``@pytest.mark.llm_vcr(sequential=True, matcher="semantic")``
-    or ``@pytest.mark.parametrize("llm_vcr_client", [{"name": "...", "sequential": True}], indirect=True)``.
+    or ``@pytest.mark.parametrize(..., indirect=True)`` with a dict param.
     """
     cassette_name, sequential, matcher = _fixture_opts(request)
     cassette_path = _cassette_dir() / f"{cassette_name}.yaml"
